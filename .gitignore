@@ -1,0 +1,8 @@
+eigen*
+*.nc
+*.tmp
+*.o
+bt_collation/
+*.zip
+*.txt
+
