@@ -270,7 +270,7 @@ compute_eigenvals(const Mat1f &bt08,const Mat1f &bt10,const Mat1f &bt11,const Ma
   int y,x,i,j,k;
   int y_delta = 1;
   int x_delta = 1;
-  int t_delta = 1;
+  int t_delta = 0;
 
   int min_num = (2*y_delta +1) *(2*x_delta + 1)*(2*t_delta+1)/2;
   int count_dim = 0;

@@ -45,25 +45,18 @@ main(int argc, char *argv[])
 
     // Initialize arrays to hold various l2p masks
     Mat1b land_mask(HEIGHT,WIDTH);
-    Mat1b invalid_mask(HEIGHT,WIDTH);
     Mat1b border_mask(HEIGHT,WIDTH);
-    Mat1b l2p_mask(HEIGHT,WIDTH);
-    Mat1b ice_mask(HEIGHT,WIDTH);    
+    Mat1b l2p_mask(HEIGHT,WIDTH);  
 
     //function to get land mask and invalid(corners) mask
-    get_l2pmask(original_paths[0].c_str(),land_mask,invalid_mask);
-    
-    //get ice_mask
-    get_icemask(reference_file, ice_mask);
+    get_l2pmask(original_paths[0].c_str(),land_mask,l2p_mask);
 
     //get_lats(original_paths[0], lats);
     get_landborders(land_mask, border_mask, LAND_KERNEL);
     
-    // combine l2p flags in order to save space
-    combine_l2pmasks(land_mask,invalid_mask, ice_mask, l2p_mask);
     printf("read land mask\n");
     //release memory of unused masks
-    land_mask.release();invalid_mask.release();ice_mask.release();
+    land_mask.release();
 
     
     string filename;

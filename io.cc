@@ -239,7 +239,7 @@ get_icemask(const string pathsfile, Mat1b &ice_mask)
 	}
 
 	Mat1b img;
-	readvar(ncid, "acspo_mask", img);
+	readvar(ncid, "l2p_flags", img);
 	if(img.dims != 2 || img.size[0] != HEIGHT || img.size[1] != HEIGHT){
 		eprintf("unpexpected dimensions\n");
 	}
@@ -247,14 +247,8 @@ get_icemask(const string pathsfile, Mat1b &ice_mask)
 		eprintf("unpexpected type\n");
 	}
     
-	for(y = 0; y < HEIGHT; ++y){
-		for(x = 0; x < WIDTH; ++x){
-			ice_mask(y,x) = 0;
-			 if(img(y,x) & 32){
-			 	ice_mask(y, x) = 255;
-			 }
-		}
-	}
+    ice_mask = img & (1 << 2);
+
 	n = nc_close(ncid);
 	if(n != NC_NOERR){
 		ncfatal(n, "nc_close failed");
@@ -390,10 +384,12 @@ read_mask_binary(const string pathsfile, Mat1s &mask, int cur_ind)
 }
 
 void
-get_l2pmask(const char *pathsfile, Mat1b &land_mask, Mat1b &invalid_mask)
+get_l2pmask(const char *pathsfile, Mat1b &land_mask, Mat1b &l2p_mask)
 {
     int ncid;
 	int n = nc_open(pathsfile, 0, &ncid);
+	short val;
+
 	if(n != NC_NOERR){
 		ncfatal(n, "nc_open failed for %s\n", pathsfile);
 	}
@@ -406,28 +402,33 @@ get_l2pmask(const char *pathsfile, Mat1b &land_mask, Mat1b &invalid_mask)
 	if(img.type() != CV_16SC1){
 		eprintf("unpexpected type\n");
 	}
-    
-	for(int y = 0; y < HEIGHT; ++y){
+
+    for(int y = 0; y < HEIGHT; ++y){
 		for(int x = 0; x < WIDTH; ++x){
-			 if(img(0,y,x) & 2){
-			 	land_mask(y, x) = 255;
-			 }
-			 else{
-			 	land_mask(y,x) = 0;
-			 }
+			val = img(0, y, x);
+			if((val & 2)){
+				land_mask(y, x) = 255;
+				l2p_mask(y, x) = 255;
+			}
+			else{
+				land_mask(y, x) = 0;
+				l2p_mask(y,x) = 0;
+			}
 		}
 	}
 
 	for(int y = 0; y < HEIGHT; ++y){
 		for(int x = 0; x < WIDTH; ++x){
-			 if(img(0,y,x) & 256){
-			 	invalid_mask(y, x) = 255;
-			 }
-			 else{
-			 	invalid_mask(y,x) = 0;
-			 }
+			val = img(0, y, x);
+			if((val & 256) || (val & (1 << 2))){
+				l2p_mask(y, x) = 255;
+			}
+			else{
+				l2p_mask(y,x) = 0;
+			}
 		}
 	}
+	
 	n = nc_close(ncid);
 	if(n != NC_NOERR){
 		ncfatal(n, "nc_close failed");

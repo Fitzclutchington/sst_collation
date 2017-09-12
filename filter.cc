@@ -37,7 +37,6 @@ filter_clouds(const vector<string> &paths, const Mat1b &l2p_mask, const Mat1b &b
     // Fill data arrays with inital brightness_temperature/sst data
     for(j=0;j<sample_size;j++){
         readgranule(paths[j], bt11,bt12,bt08,bt10, j);
-        read_mask(clear_paths[j], bt_mask, j); // open mask
         apply_l2p_flags( l2p_mask, bt11, j,false); // set l2p flags to NAN
         apply_l2p_flags( l2p_mask, bt12, j,false);
         apply_l2p_flags( l2p_mask, bt10, j,false);

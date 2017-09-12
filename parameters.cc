@@ -1,5 +1,5 @@
-const int WIDTH = 5500;
-const int HEIGHT = 5500;
+const int WIDTH = 5424;
+const int HEIGHT = 5424;
 const int WIDTH_HIST = 101;
 const int HEIGHT_HIST = 144;
 const int DEPTH_HIST = 90;
