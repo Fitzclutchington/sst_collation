@@ -7,3 +7,4 @@ bt_collation/
 *.txt
 test_eigen/
 *.png
+python/images/*

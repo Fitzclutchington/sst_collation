@@ -213,10 +213,11 @@ get_file_names(const char *pathsfile, vector<string> &paths)
 	}
 	f.close();
 
+	/*
 	if(paths.size() < TIMEINT){
 		eprintf("You must have at least %d granules\n",TIMEINT);
 	}
-	
+	*/
 }
 
 int
@@ -229,31 +230,6 @@ get_current_files(const vector<string> &paths, vector<string> &curPaths, int nfi
 	return loc + 1;
 }
 
-void
-get_icemask(const string pathsfile, Mat1b &ice_mask)
-{
-	int ncid,y,x;
-	int n = nc_open(pathsfile.c_str(), 0, &ncid);
-	if(n != NC_NOERR){
-		ncfatal(n, "nc_open failed for %s\n", pathsfile.c_str());
-	}
-
-	Mat1b img;
-	readvar(ncid, "l2p_flags", img);
-	if(img.dims != 2 || img.size[0] != HEIGHT || img.size[1] != HEIGHT){
-		eprintf("unpexpected dimensions\n");
-	}
-	if(img.type() != CV_8UC1){
-		eprintf("unpexpected type\n");
-	}
-    
-    ice_mask = img & (1 << 2);
-
-	n = nc_close(ncid);
-	if(n != NC_NOERR){
-		ncfatal(n, "nc_close failed");
-	}
-}
 
 void
 open_LUT(const string pathsfile, Mat1b &lut, int *dims)
@@ -586,7 +562,7 @@ readgranule_oneband(const string path,Mat1f &bt11, int ind,string variable)
 }
 
 void
-get_var(const string path, Mat1f &mat, const string variable)
+get_var(const string path, Mat &mat, const string variable)
 {
 	// TODO: deal with non-continuous time interval
     
@@ -610,7 +586,7 @@ get_var(const string path, Mat1f &mat, const string variable)
 			printf("unpexpected dimensions\n");
 		}
 	}
-	if(img.type() != CV_32FC1 && img.type() != CV_16SC1){
+	if(img.type() != CV_32FC1 && img.type() != CV_16SC1 && img.type() != CV_8SC1){
 		eprintf("unpexpected type\n");
 	}
 	
@@ -632,9 +608,35 @@ get_var(const string path, Mat1f &mat, const string variable)
 				 else{
 				 	val = img.at<short>(y, x)*scale + offset;
 				 }
-				 mat(y,x) = NAN;
+				 mat.at<float>(y,x) = NAN;
 				 if(val > -200){
-				 	mat(y, x) = val;
+				 	mat.at<float>(y, x) = val;
+				 }
+			}
+		}
+	}
+
+	else if(img.type() == CV_8SC1){
+		n = nc_get_att_float(ncid, varid, "add_offset", &offset);
+		if(n != NC_NOERR){
+			ncfatal(n, "nc_get_att_float failed");
+		}
+		n = nc_get_att_float(ncid, varid, "scale_factor", &scale);
+		if(n != NC_NOERR){
+			ncfatal(n, "nc_get_att_float failed");
+		}
+		
+		for(int y = 0; y < HEIGHT; y++){
+			for(int x = 0; x < WIDTH; x++){
+				 if(img.dims == 3){
+				 	val = img.at<char>(0, y, x)*scale + offset;
+				 }
+				 else{
+				 	val = img.at<char>(y, x)*scale + offset;
+				 }
+				 mat.at<float>(y,x) = NAN;
+				 if(val > -200){
+				 	mat.at<float>(y, x) = val;
 				 }
 			}
 		}
@@ -649,9 +651,9 @@ get_var(const string path, Mat1f &mat, const string variable)
 				 else{
 				 	val = img.at<float>(y, x);
 				 }
-				 mat(y,x) = NAN;
+				 mat.at<float>(y,x) = NAN;
 				 if(val > -200){
-				 	mat(y, x) = val;
+				 	mat.at<float>(y, x) = val;
 				 }
 			}
 		}
@@ -987,139 +989,6 @@ readgranule(const string path, Mat1f &bt11, Mat1f &bt12, Mat1f &bt08, Mat1f &bt1
 
 }
 
-void
-readgranule_1d(const string path, Mat1f &bt08, Mat1f &bt10, Mat1f &bt11, Mat1f &bt12)
-{
-	// TODO: deal with non-continuous time interval 
-	int ncid;
-	float val;
-
-	int n = nc_open(path.c_str(), 0, &ncid);
-	if(n != NC_NOERR){
-		ncfatal(n, "nc_open failed for %s", path.c_str());
-	}
-	
-	Mat1s img;
-
-	int varid = readvar(ncid, "brightness_temperature_11um2", img);
-	if(img.dims != 3 || img.size[0] != 1 || img.size[1] != HEIGHT || img.size[2] != HEIGHT){
-		printf("unpexpected dimensions\n");
-	}
-	if(img.type() != CV_16SC1){
-		eprintf("unpexpected type\n");
-	}
-	
-	float scale, offset;
-	n = nc_get_att_float(ncid, varid, "add_offset", &offset);
-	if(n != NC_NOERR){
-		ncfatal(n, "nc_get_att_float failed");
-	}
-	n = nc_get_att_float(ncid, varid, "scale_factor", &scale);
-	if(n != NC_NOERR){
-		ncfatal(n, "nc_get_att_float failed");
-	}
-	
-
-	for(int y = 0; y < HEIGHT; y++){
-		for(int x = 0; x < WIDTH; x++){
-			 bt11(y,x) = NAN;
-			 val = img(0, y, x)*scale + offset;
-			 if(val > 0){
-			 	bt11(y, x) = val;
-			 }
-		}
-	}
-	
-	varid = readvar(ncid, "brightness_temperature_12um3", img);
-	if(img.dims != 3 || img.size[0] != 1 || img.size[1] != HEIGHT || img.size[2] != HEIGHT){
-		printf("unpexpected dimensions\n");
-	}
-	if(img.type() != CV_16SC1){
-		eprintf("unpexpected type\n");
-	}
-	
-	n = nc_get_att_float(ncid, varid, "add_offset", &offset);
-	if(n != NC_NOERR){
-		ncfatal(n, "nc_get_att_float failed");
-	}
-	n = nc_get_att_float(ncid, varid, "scale_factor", &scale);
-	if(n != NC_NOERR){
-		ncfatal(n, "nc_get_att_float failed");
-	}
-	
-
-	for(int y = 0; y < HEIGHT; y++){
-		for(int x = 0; x < WIDTH; x++){
-			 val = img(0, y, x)*scale + offset;
-			 bt12(y,x) = NAN;
-			 if(val > 0){
-			 	bt12(y, x) = val;
-			 }
-		}
-	}
-
-	varid = readvar(ncid, "brightness_temperature_08um6", img);
-	if(img.dims != 3 || img.size[0] != 1 || img.size[1] != HEIGHT || img.size[2] != HEIGHT){
-		printf("unpexpected dimensions\n");
-	}
-	if(img.type() != CV_16SC1){
-		eprintf("unpexpected type\n");
-	}
-	
-	n = nc_get_att_float(ncid, varid, "add_offset", &offset);
-	if(n != NC_NOERR){
-		ncfatal(n, "nc_get_att_float failed");
-	}
-	n = nc_get_att_float(ncid, varid, "scale_factor", &scale);
-	if(n != NC_NOERR){
-		ncfatal(n, "nc_get_att_float failed");
-	}
-	
-
-	for(int y = 0; y < HEIGHT; y++){
-		for(int x = 0; x < WIDTH; x++){
-			 val = img(0, y, x)*scale + offset;
-			 bt08(y,x) = NAN;
-			 if(val > 0){
-			 	bt08(y, x) = val;
-			 }
-		}
-	}
-	
-	varid = readvar(ncid, "brightness_temperature_10um4", img);
-	if(img.dims != 3 || img.size[0] != 1 || img.size[1] != HEIGHT || img.size[2] != HEIGHT){
-		printf("unpexpected dimensions\n");
-	}
-	if(img.type() != CV_16SC1){
-		eprintf("unpexpected type\n");
-	}
-	
-	n = nc_get_att_float(ncid, varid, "add_offset", &offset);
-	if(n != NC_NOERR){
-		ncfatal(n, "nc_get_att_float failed");
-	}
-	n = nc_get_att_float(ncid, varid, "scale_factor", &scale);
-	if(n != NC_NOERR){
-		ncfatal(n, "nc_get_att_float failed");
-	}
-	
-
-	for(int y = 0; y < HEIGHT; y++){
-		for(int x = 0; x < WIDTH; x++){
-			 val = img(0, y, x)*scale + offset;
-			 bt10(y,x) = NAN;
-			 if(val > 0){
-			 	bt10(y, x) = val;
-			 }
-		}
-	}
-    
-	n = nc_close(ncid);
-	if(n != NC_NOERR){
-		ncfatal(n, "nc_close failed");
-	}
-
-}
 
 void
 readgranule_fullbands(const string path, Mat1f &bt11, Mat1f &bt12, Mat1f &bt08, Mat1f &bt10, Mat1f &sst, int ind)

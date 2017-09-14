@@ -41,7 +41,7 @@ generate_sst_histogram(const vector<string> &pass2_files, const Mat1f &pass2,
 
 void
 generate_sst_histogram_3d(const vector<string> &pass2_files, const Mat1f &pass2, 
-	                   const Mat1f &reference, const Mat1f &lon, const Mat1f &sza, Mat1f &hist)
+	                   const Mat1f &reference_sst, const Mat1f &lon, const Mat1f &sza, Mat1f &hist)
 {
 	int i,x,y,m,n,p;
 	int time_size = pass2_files.size();
@@ -52,29 +52,27 @@ generate_sst_histogram_3d(const vector<string> &pass2_files, const Mat1f &pass2,
 	float dt;
 	string filename, minute_stamp, hour_stamp;
 
-	printf("intialized+vars\n");
 	hist.setTo(0);
 	for(i = 0; i < time_size; ++i){
 
 
-		printf("filename = %s\n",pass2_files[i].c_str());
+		
 		filename = generate_filename(pass2_files[i]);
-		printf("generated filename\n");
+	
 		minute_stamp = filename.substr(11,2);
-		printf("performed minute_stamp\n");;
+	
 		minute_stamp_n = atoi(minute_stamp.c_str()) / 60.0;
-		printf("numbered minute_stamp\n");
+	
 		hour_stamp = filename.substr(9,2) ;
-		printf("computed hour stamp\n");
+	
 
 		hour_stamp_n = atoi(hour_stamp.c_str())+minute_stamp_n;
-		printf("starting loop\n");
+
 		for(y = 0; y < HEIGHT; ++y){
 			for(x = 0; x < WIDTH; ++x){
-				if(std::isfinite(pass2(y,x,i)) && std::isfinite(reference(y,x))){
-
-					dt = pass2(y,x,i) - reference(y,x);
-					m = floor((dt+d_range)/step);
+				if(std::isfinite(pass2(y,x,i)) && std::isfinite(reference_sst(y,x))){
+					dt = pass2(y,x,i) - reference_sst(y,x);
+					m = floor((dt +d_range)/step);
 					n = ((((int) floor(SAMPLING_RATE*(hour_stamp_n + lon(y,x)/15)))  % mod) + mod) % mod;
 					p = floor(fabs(sza(y,x)));
 
@@ -83,15 +81,11 @@ generate_sst_histogram_3d(const vector<string> &pass2_files, const Mat1f &pass2,
 							//printf("val of time = %d, val of dt = %d",n,m);
 							hist(n,m,p)++;
 						}
-						else{
-							printf("OUT OF BOUNDS\n");
-							printf("m = %d n = %d p = %d\n, x=%d, y =%d, file=%s\n",m,n,p,x,y,filename.c_str());
-						}
+
 					}
 				}
 			}
 		}
-		printf("finished loop\n");
 	}
 
 }
@@ -244,7 +238,7 @@ distribution_check(const Mat1b &hist_mask,Mat1f &approx,const Mat1b &l2p_mask,
 
 void
 distribution_check_3d(const Mat1b &hist_mask,Mat1f &approx,const Mat1b &l2p_mask,
-	               int collated_interp_size,string ref_file, const vector<string> &approx1_paths)
+	               int collated_interp_size,const Mat1f &reference_sst, const Mat1f &sza, const vector<string> &approx1_paths, const string path)
 {
 	int x,y,t,m,n,p;
 	vector<float> hour_stamps;
@@ -256,12 +250,10 @@ distribution_check_3d(const Mat1b &hist_mask,Mat1f &approx,const Mat1b &l2p_mask
 	int mod = SAMPLING_RATE * 24;
 
 	Mat1f lon(HEIGHT,WIDTH);
-	Mat1f sst_ref(HEIGHT,WIDTH);
-	Mat1f sza(HEIGHT,WIDTH);
 
-	get_var(ref_file,lon,"longitude");
-    get_var(ref_file,sst_ref, "sst_reynolds");
-    get_var(ref_file, sza, "satellite_zenith_angle");
+
+	get_var(path,lon,"lon");
+
 
 	for(t = 0; t < collated_interp_size; ++t){
 		filename = generate_filename(approx1_paths[t]);
@@ -288,9 +280,9 @@ distribution_check_3d(const Mat1b &hist_mask,Mat1f &approx,const Mat1b &l2p_mask
 			if(l2p_mask(y,x) == 0){
 				//printf("pass\n");
 				for(t = 0; t < collated_interp_size; ++t){
-					if(std::isfinite(approx(y,x,t)) && std::isfinite(sst_ref(y,x)) ){
+					if(std::isfinite(approx(y,x,t)) && std::isfinite(reference_sst(y,x)) ){
 						//printf("in t loop\n");
-						dt = approx(y,x,t) - sst_ref(y,x);
+						dt = approx(y,x,t) - reference_sst(y,x);
 						m = floor((dt+d_range)/step);
 						n =  (((((int) floor(SAMPLING_RATE*(hour_stamps[t] + lon(y,x))))  % mod) + mod) % mod);
 						p = floor(fabs(sza(y,x)));
@@ -368,40 +360,35 @@ histogram_2d(const vector<string> &mask_files,const vector<string> &sst, string 
 }
 
 void
-histogram_3d(const vector<string> &mask_files,const vector<string> &sst, string ref_file, int mode, Mat1f &hist)
+histogram_3d(const vector<string> &mask_files,const vector<string> &sst, Mat1f &reference_sst, Mat1f &sza, int mode, Mat1f &hist)
 {
 	int i;
 	int time_size = mask_files.size();
 	int dims[3] = {HEIGHT,WIDTH,time_size};
 	//int ORIGINAL_LAG = FILTER_WINDOW_LAG+SECOND_PASS_LAG;
 
-	Mat1b clear_masks(HEIGHT,WIDTH);
+	Mat1b clear_mask(HEIGHT,WIDTH);
 	Mat1f clear_samples(3,dims);
 	Mat1f lons(HEIGHT,WIDTH);
-	Mat1f reference(HEIGHT,WIDTH);
 	
-	Mat1f sza(HEIGHT,WIDTH);
-	//Mat1f means(height,1);
-	get_var(ref_file,lons,"longitude");
-    get_var(ref_file,reference, "sst_reynolds");
-    get_var(ref_file, sza, "satellite_zenith_angle");
+	get_var(sst[0].c_str(),lons,"lon");
     printf("initialization complete\n");
 
     // pass 2
     if(mode == 0){
     	for(i = 0; i < time_size; ++i){
-	        read_mask(mask_files[i],clear_masks,-1);
+	        read_mask(mask_files[i],clear_mask,-1);
 	        readgranule_oneband(sst[i],clear_samples,i,"sea_surface_temperature");
-	        apply_mask_slice(clear_masks,clear_samples,i,false);
+	        apply_mask_slice(clear_mask,clear_samples,i,false);
 	        printf("read file1 %s\n",sst[i].c_str());
     	}
     }
     //acspo
     else if(mode == 1){
     	for(i = 0; i < time_size; ++i){
-	        read_acspo(mask_files[i],clear_masks, -1);
+	        read_acspo(mask_files[i],clear_mask, -1);
 	        readgranule_oneband(mask_files[i],clear_samples,i,"sea_surface_temperature");
-	        apply_mask_slice(clear_masks,clear_samples,i,false);
+	        apply_mask_slice(clear_mask,clear_samples,i,false);
 	        printf("read file1 %s\n",mask_files[i].c_str());
 	    }
     }
@@ -415,7 +402,7 @@ histogram_3d(const vector<string> &mask_files,const vector<string> &sst, string 
 
 	//SAVENC(clear_samples);
 	printf("starting histogram\n");
-    generate_sst_histogram_3d(mask_files, clear_samples, reference,  lons, sza, hist);
+    generate_sst_histogram_3d(mask_files, clear_samples, reference_sst,  lons, sza, hist);
  
     printf("saving histogram\n");
 

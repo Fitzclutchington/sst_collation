@@ -12,7 +12,7 @@ def read_var(cdf,variable):
     data = np.squeeze(cdf[variable][:])
     return data
 
-if len(sys.argv) < 3:
+if len(sys.argv) < 2:
     print "usage: python stats_clean.py <reference> <time>"
     print "time as yyyy-mm-dd"
     sys.exit()
@@ -23,8 +23,8 @@ collated2_files = sorted(glob.glob("../data/collated_mat2_ls/*.nc"))
 scollate_files = sorted(glob.glob("../data/scollated_ls/*.nc"))
 r_collate_files = sorted(glob.glob("../data/above_ls/*.nc"))
 reinstated_files = sorted(glob.glob("../data/reinstated_ls/*.nc"))
-acspo_files = sorted(glob.glob("../../acspo_test/data/collated_acspo/*.nc"))
-original_files = [line.rstrip('\n') for line in open('../ahitest.txt')]
+#acspo_files = sorted(glob.glob("../../acspo_test/data/collated_acspo/*.nc"))
+original_files = [line.rstrip('\n') for line in open('../goes-16-2017-08-31-granule-list.txt')]
 orig_filenames = [x.split('/')[-1] for x in original_files]
 approx_filenames = [x.split('/')[-1] for x in approx_files]
 clear_filenames = [x.split('/')[-1] for x in clear_files]
@@ -54,15 +54,20 @@ pass1_clear = []
 reinstated_clear = []
 col_acspo_clear = []
 
-ref_file = sys.argv[1]
-time_file = sys.argv[2]
+time_file = sys.argv[1]
 outfile = 'means_' + time_file
 print outfile
 
 
-cdf = netCDF4.Dataset(ref_file)
-ref_sst = read_var(cdf,"sst_reynolds")
+cdf = netCDF4.Dataset(original_files[0])
 sza = read_var(cdf,"satellite_zenith_angle")
+
+dt_analysis = read_var(cdf, 'dt_analysis')
+sst = read_var(cdf, 'sea_surface_temperature')
+
+ref_sst = sst - dt_analysis
+sza = read_var(cdf,"satellite_zenith_angle")
+
 mask = np.abs(sza) < 67
 
 ref_sst[~mask] = np.nan
@@ -99,6 +104,7 @@ for i in range(total_files):
     reinstated_mean.append(np.nanmean(diff))
     reinstated_clear.append(np.isfinite(vals).sum())
 
+    """
     cdf = netCDF4.Dataset(acspo_files[i])
     vals = read_var(cdf,"sea_surface_temperature")   
     cdf.close()
@@ -106,6 +112,7 @@ for i in range(total_files):
     col_acspo_std.append(np.nanstd(diff))
     col_acspo_mean.append(np.nanmean(diff))
     col_acspo_clear.append(np.isfinite(vals).sum())
+    """
 
     sst_filename = original_files[orig_filenames.index(base_file)]
     cdf = netCDF4.Dataset(sst_filename)
@@ -181,7 +188,7 @@ plt.plot(acspo_std, c='k', lw=2,label="acspo")
 plt.plot(pass1_std, c='c',label="pass1")
 plt.plot(approx_std, c="#FFA500", label="approx")
 plt.plot(reinstated_std, c="g", label="reinstated")
-plt.plot(col_acspo_std, c="g", lw=3, label="collated acspo")
+#plt.plot(col_acspo_std, c="g", lw=3, label="collated acspo")
 
 plt.legend()
 plt.xticks(hour_ind,times,rotation='vertical')
@@ -198,7 +205,7 @@ plt.plot(acspo_mean, c='k', lw=2,label="acspo")
 plt.plot(pass1_mean, c='c',label="pass1")
 plt.plot(approx_mean, c="#FFA500", label="approx")
 plt.plot(reinstated_mean, c="g", label="reinstated")
-plt.plot(col_acspo_mean, c="g", lw=3, label="collated acspo")
+#plt.plot(col_acspo_mean, c="g", lw=3, label="collated acspo")
 plt.legend()
 plt.xticks(hour_ind,times,rotation='vertical')
 plt.title("Means " + time_file)
@@ -214,7 +221,7 @@ plt.plot(acspo_clear, c='k', lw=2,label="acspo")
 plt.plot(pass1_clear, c='c',label="pass1")
 plt.plot(approx_clear, c="#FFA500", label="approx")
 plt.plot(reinstated_clear, c="g", label="reinstated")
-plt.plot(col_acspo_clear, c="g", lw=3, label="collated acspo")
+#plt.plot(col_acspo_clear, c="g", lw=3, label="collated acspo")
 plt.legend()
 plt.title("Number Clear " + time_file)
 plt.xticks(hour_ind,times,rotation='vertical')

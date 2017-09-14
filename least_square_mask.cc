@@ -31,8 +31,8 @@ least_square_mask_acspo(vector<string> &clear_paths,const vector<string> &origin
 
         read_acspo(original_paths[j],clear_mask,j);  // open acspo granule
         readgranule_oneband(original_paths[j], sst_samples, j, variable_name);  // open original granule
-        //apply_mask_slice(clear_mask,sst_samples,j,true); // apply mask
-        //mask_l2p(clear_mask,l2p_mask,j);
+        apply_mask_slice(clear_mask,sst_samples,j,true); // apply mask
+       
 
         filename = generate_filename(original_paths[j]);
         clearpath = "data/clear" + filename;

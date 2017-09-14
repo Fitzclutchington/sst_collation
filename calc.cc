@@ -71,20 +71,6 @@ calculate_diffs(const Mat1f &a, const Mat1f &b, Mat1f &diffs,int cur_ind, bool a
 }   
 
 
-void
-calculate_sums(const Mat1f &a, const Mat1f &b, Mat1f &sums,int* dims, int *inds){
-  //printf("calculating diffs\n");
-  int time = dims[2];
-    for(int t = 0; t<time; t++){
-      //printf("suxxess at time %d\n",t);
-      for(int y = 0;y<HEIGHT;y++){
-        for(int x = 0;x<WIDTH;x++){
-                sums(y,x,inds[t]) = a(y,x,inds[t]) + b(y,x,inds[t]);            
-          }
-        }
-    }
-    
-}
 
 void 
 pwl_interp_1d (const vector<int> &xd, const vector<float> &yd, const vector<int> &xi, 
@@ -838,11 +824,11 @@ remove_gaps(Mat1f &smooth_samples, Mat1f &clear_samples, const Mat1b &l2p_mask,i
 }
 
 void
-compute_dt_thresholds(Mat1f &t_cold, Mat1f &t_warm, string ref_file)
+compute_dt_thresholds(Mat1f &t_cold, Mat1f &t_warm, const Mat1f &sza)
 {
-  Mat1f sza(HEIGHT,WIDTH);
+  
   int y,x;
-  get_var(ref_file, sza, "satellite_zenith_angle");
+  
   for(y = 0; y < HEIGHT; ++y){
         for(x = 0;x < WIDTH; ++x){
             if(fabs(sza(y,x)) > MAX_SZA){
@@ -855,25 +841,23 @@ compute_dt_thresholds(Mat1f &t_cold, Mat1f &t_warm, string ref_file)
             } 
         }
     }
-    sza.release();
 }
 
 void
 compute_reinstated(Mat1f &reinstated_clear, Mat1f &original_sst, const Mat1f &smooth, Mat1b mask,
-                   Mat1f &t_cold, Mat1f &t_warm, int collated_interp_size, string ref_file)
+                   Mat1f &t_cold, Mat1f &t_warm, int collated_interp_size, const Mat1f &reference_sst)
 {
   int i, y, x;
   float DD, D_ref, D_right, D_left;
   bool nn,diag;
-  Mat1f reference(HEIGHT,WIDTH);
-  get_var(ref_file,reference,"sst_reynolds");
+ 
 
   for(i = 1; i < collated_interp_size-1; ++i){        
         for(y = 0; y < HEIGHT; ++y){
             for(x = 0; x < WIDTH; ++x){
                 if(i > 0 && i < collated_interp_size -1){
                     DD = original_sst(y,x,i) - smooth(y,x,i);
-                    D_ref = original_sst(y,x,i) - reference(y,x); 
+                    D_ref = original_sst(y,x,i) - reference_sst(y,x); 
                     nn = !(mask(y,x,i) & NN);
                     diag = !(mask(y,x,i) & DIAG);
                     if((std::isfinite(DD) && DD > -DELTA_SST) && D_ref > t_cold(y,x) && D_ref < t_warm(y,x) && original_sst(y,x,i) > MIN_TEMP && nn && diag){
@@ -887,5 +871,16 @@ compute_reinstated(Mat1f &reinstated_clear, Mat1f &original_sst, const Mat1f &sm
     t_cold.release();
     t_warm.release();
     original_sst.release();
-    reference.release();
+}
+
+void
+compute_reference(const string path, Mat1f &reference_sst)
+{
+  Mat1f sst(HEIGHT, WIDTH);
+  Mat1f dt_analysis(HEIGHT, WIDTH);
+
+  get_var(path, sst, "sea_surface_temperature");
+  get_var(path, dt_analysis, "dt_analysis");
+
+  reference_sst = sst - dt_analysis;
 }

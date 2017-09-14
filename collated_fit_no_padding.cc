@@ -1,8 +1,8 @@
 #include "collation_functions.cc"
 
 void
-collate_samples(const Mat1f &clear_samples, const Mat1f &approx, Mat1f &collated, 
-    const vector<int> collated_inds,const Mat1b &l2p_mask, int sample_size, const string ref_file, bool window, float g)
+collate_samples(const Mat1f &clear_samples, const Mat1f &approx, Mat1f &collated, const vector<int> collated_inds,
+                const Mat1b &l2p_mask, int sample_size, const Mat1f &reference_sst, const Mat1b border_mask, bool window, float g)
 {
     
     // 1) set up right hand side-> rhs[k] = MU*clear_sum + MU* approx sum -> k = time step
@@ -26,14 +26,14 @@ collate_samples(const Mat1f &clear_samples, const Mat1f &approx, Mat1f &collated
     MatrixXf v(collated_size,collated_size);
     MatrixXf gamma(collated_size,collated_size); 
 
-    Mat1f reference(HEIGHT,WIDTH);
-    Mat1f o2ld(HEIGHT,WIDTH);
+    
+    //Mat1f o2ld(HEIGHT,WIDTH);
     Mat1f g_mat,v_mat, rhs_mat;
 
     rhs.setZero(); v.setZero();
 
-    get_var(ref_file,reference,"sst_reynolds");
-    get_var(ref_file,o2ld,"ocean_to_land_dist");
+ 
+    //get_var(ref_file,o2ld,"ocean_to_land_dist");
 
    
     compute_gaussian_weights(weights);
@@ -88,7 +88,7 @@ collate_samples(const Mat1f &clear_samples, const Mat1f &approx, Mat1f &collated
                     if(!window){
                         for(i = first_valid;i <= last_valid; ++i){
                             collated(y,x,i) = collated_vals(i);
-                            if(abs(reference(y,x) - collated(y,x,i)) > 7 && o2ld(y,x) <=50){
+                            if(abs(reference_sst(y,x) - collated(y,x,i)) > 7 && border_mask(y,x)){
                                 collated(y,x,i) = NAN;
                             }
                         }
@@ -117,7 +117,6 @@ collate_samples(const Mat1f &clear_samples, const Mat1f &approx, Mat1f &collated
             }
         }
     }
-    reference.release();
-    o2ld.release();
+ 
 }
 

@@ -1,5 +1,5 @@
 void
-calc_approximate(const Mat1f &bt11_smooth, const Mat1f &bt11_clear, const Mat1b &l2p_mask, Mat1f &bt11_approx, const string ref_file, int time_size)
+calc_approximate(const Mat1f &bt11_smooth, const Mat1f &bt11_clear, const Mat1b &l2p_mask, Mat1f &bt11_approx, const Mat1f reference_sst, int time_size)
 {
     int x,y,z;
     double d1,d2,coeff;
@@ -10,11 +10,10 @@ calc_approximate(const Mat1f &bt11_smooth, const Mat1f &bt11_clear, const Mat1b 
     vector<float> smooth;
     vector<int> clear_inds;
 
-    Mat1f reference(HEIGHT,WIDTH);
 
     //Mat1f diffs(HEIGHT,WIDTH);
     bt11_approx.setTo(NAN);
-    get_var(ref_file,reference,"sst_reynolds");
+    
 
     for(y = 0; y < HEIGHT; ++y){
         for(x = 0; x < WIDTH; ++x){
@@ -40,7 +39,7 @@ calc_approximate(const Mat1f &bt11_smooth, const Mat1f &bt11_clear, const Mat1b 
                     coeff = d1/d2;
                     for(z = 0; z < time_size; ++z){
                         val = coeff * bt11_smooth(y,x,z);
-                        if((val-reference(y,x)) > T_COLD_DT && (val - reference(y,x)) < T_WARM_DT){
+                        if((val-reference_sst(y,x)) > T_COLD_DT && (val - reference_sst(y,x)) < T_WARM_DT){
                             bt11_approx(y,x,z) = val;
                         }
 
@@ -49,7 +48,6 @@ calc_approximate(const Mat1f &bt11_smooth, const Mat1f &bt11_clear, const Mat1b 
             }
         }
     }
-    reference.release();
 }
 
 

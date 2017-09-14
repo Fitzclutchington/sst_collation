@@ -1,6 +1,6 @@
 void
 smooth_samples_collated(const Mat1f &collated_interp, Mat1f &collated_smooth,const Mat1f &l2p_mask,
-                        const string ref_file,const int* window,const int sample_size)
+                        const Mat1f reference_sst,const int* window,const int sample_size)
 {
     int i,y,x,t,cur_ind;
     int threshold;
@@ -12,7 +12,6 @@ smooth_samples_collated(const Mat1f &collated_interp, Mat1f &collated_smooth,con
 
     
     Mat1f smooth_output(HEIGHT, WIDTH); // matrix of smooth vals to save to file
-    Mat1f reference(HEIGHT,WIDTH);
 
     Mat1f masked_data(3,dims);
 
@@ -22,8 +21,6 @@ smooth_samples_collated(const Mat1f &collated_interp, Mat1f &collated_smooth,con
     Mat1f time_count(HEIGHT,WIDTH);
     time_count.setTo(0);
 
-    // get the reference data
-    get_var(ref_file,reference,"sst_reynolds");
 
     // always compute on sst
     // open sst and apply mask
@@ -32,7 +29,7 @@ smooth_samples_collated(const Mat1f &collated_interp, Mat1f &collated_smooth,con
         //subtract reference from granule
         for(y=0;y<HEIGHT;y++){
             for(x=0;x<WIDTH;x++){
-                masked_data(y,x,i) = collated_interp(y,x,i) - reference(y,x);
+                masked_data(y,x,i) = collated_interp(y,x,i) - reference_sst(y,x);
             }
         }
     }
@@ -61,7 +58,7 @@ smooth_samples_collated(const Mat1f &collated_interp, Mat1f &collated_smooth,con
     // add back reference
     for(y = 0; y < HEIGHT; ++y){
         for(x = 0; x < WIDTH; ++x){
-            collated_smooth(y,x,0) = smooth_output(y,x) + reference(y,x);
+            collated_smooth(y,x,0) = smooth_output(y,x) + reference_sst(y,x);
         }
     }
 
@@ -74,7 +71,7 @@ smooth_samples_collated(const Mat1f &collated_interp, Mat1f &collated_smooth,con
         // add back reference
         for(y = 0; y < HEIGHT; ++y){
             for(x = 0; x < WIDTH; ++x){
-                collated_smooth(y,x,cur_ind) = smooth_output(y,x) + reference(y,x);
+                collated_smooth(y,x,cur_ind) = smooth_output(y,x) + reference_sst(y,x);
             }
         } 
     }   
@@ -90,7 +87,7 @@ smooth_samples_collated(const Mat1f &collated_interp, Mat1f &collated_smooth,con
         // add back reference
         for(y = 0; y < HEIGHT; ++y){
             for(x = 0; x < WIDTH; ++x){
-                collated_smooth(y,x,cur_ind) = smooth_output(y,x) + reference(y,x);
+                collated_smooth(y,x,cur_ind) = smooth_output(y,x) + reference_sst(y,x);
             }
         }
     }
@@ -104,7 +101,7 @@ smooth_samples_collated(const Mat1f &collated_interp, Mat1f &collated_smooth,con
         // add back reference
         for(y = 0; y < HEIGHT; ++y){
             for(x = 0; x < WIDTH; ++x){
-                collated_smooth(y,x,cur_ind) = smooth_output(y,x) + reference(y,x);
+                collated_smooth(y,x,cur_ind) = smooth_output(y,x) + reference_sst(y,x);
             }
         }         
     }
