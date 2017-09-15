@@ -35,12 +35,15 @@ main(int argc, char *argv[])
         eprintf("Usage: ./ahil2c <granule_list> <reference_file>");
     }
 
+    string ref_file = argv[2];
+    string granule_list_path = argv[1];
+
      // vectors used to pass file names between functions
     vector<string> original_paths;
     vector<string> clear_paths;
     vector<string> hourly_paths;
     
-    get_file_names(argv[1],original_paths); // list of paths to original granules
+    get_file_names(granule_list_path.c_str(),original_paths); // list of paths to original granules
 
     // Initialize arrays to hold various l2p masks
     Mat1b land_mask(HEIGHT,WIDTH);
@@ -56,7 +59,8 @@ main(int argc, char *argv[])
     //get_lats(original_paths[0], lats);
     get_landborders(land_mask, border_mask, LAND_KERNEL);
     
-    compute_reference(original_paths[0], reference_sst);
+    //compute_reference(original_paths[0], reference_sst);
+    get_var(ref_file, reference_sst, "sst_reynolds");
     get_var(original_paths[0], sza, "satellite_zenith_angle");
 
     printf("read land mask\n");

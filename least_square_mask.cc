@@ -32,7 +32,7 @@ least_square_mask_acspo(vector<string> &clear_paths,const vector<string> &origin
         read_acspo(original_paths[j],clear_mask,j);  // open acspo granule
         readgranule_oneband(original_paths[j], sst_samples, j, variable_name);  // open original granule
         apply_mask_slice(clear_mask,sst_samples,j,true); // apply mask
-       
+        
 
         filename = generate_filename(original_paths[j]);
         clearpath = "data/clear" + filename;
@@ -40,8 +40,9 @@ least_square_mask_acspo(vector<string> &clear_paths,const vector<string> &origin
 
         printf("opened file: %s\n",clear_paths[j].c_str());
     }
+    
 
-
+    
     // compute nn and diag mask
     // since they use i-1 and i+1 pixels in time we start 
     // the counter from 1 to avoid falling off the matrix
@@ -112,5 +113,5 @@ least_square_mask_acspo(vector<string> &clear_paths,const vector<string> &origin
 	
 	// save masks	
 	save_mat(clear_paths, clear_mask, "brightness_temperature_11um2",true,HEIGHT, WIDTH);
-
+	
 }

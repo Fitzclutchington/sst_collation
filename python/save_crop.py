@@ -2,44 +2,29 @@ import netCDF4
 import numpy as np
 import glob
 import sys
-
-def read_var(cdf,variable):
-    data = np.squeeze(cdf[variable][:])
-    return data
+from utils import read_var, get_crop
 
 if len(sys.argv) < 3:
-	print "usage: python save_crop.py <output_folder> <file_list>"
+	print "usage: python save_crop.py <output_folder> <file_list> <crops_list>"
 	print "date as yyyy-mm-dd"
 	
 
 
-min_ys = [  940,  1800, 1300]
-max_ys = [  1081, 2001, 1801]
-min_xs = [  2000, 4500, 1200]
-max_xs = [  2201, 4801, 2201]
-
-min_ys = [  3760  ]
-max_ys = [  3860 ]
-min_xs = [  900 ]
-max_xs = [  1000 ]
 
 output_folder = sys.argv[1].strip('/')
 
 file_list = sys.argv[2]
-data_folder = '../data/'
+crop_path = sys.argv[3]
+
+crops = get_crop(crop_path)
+
+data_folder = '../data'
 output_folder = '/'.join([data_folder,output_folder])
 
 x_lims = []
 original_files = [line.rstrip('\n') for line in open(file_list)]
 orig_filenames = [x.split('/')[-1] for x in original_files]
 
-for i,f in enumerate(orig_filenames):
-    if f[8:12] == '0000':
-        x_lims.append(i)
-
-filenames = orig_filenames[x_lims[0]:x_lims[1]+1]
-original_files = original_files[x_lims[0]:x_lims[1]+1]
-orig_filenames = orig_filenames[x_lims[0]:x_lims[1]+1]
 
 original_folder = 'original_sst'
 acspo_folder = 'acspo'
@@ -50,16 +35,14 @@ scollated_folder = 'scollated_ls'
 approx_folder = 'approx_ls'
 
 
-for j in range(len(max_xs)):
-	max_y = max_ys[j]
-	min_y = min_ys[j]
-	max_x = max_xs[j]
-	min_x = min_xs[j]
+for crop in crops:
 
-	crop_folder = '_'.join(map(str,[min_y,max_y,min_x,max_x]))
+	ys = crop[0]
+	xs = crop[1]
+	crop_folder = '_'.join(map(str,[ys.start,ys.stop,xs.start,xs.stop]))
 	print crop_folder
-	w = max_x-min_x
-	h = max_y-min_y
+	w = xs.stop-xs.start
+	h = ys.stop-ys.start
 
 	save_folder = '/'.join([output_folder, crop_folder])
 	"""
@@ -137,11 +120,9 @@ for j in range(len(max_xs)):
 
 		f_name = orig_filenames[i]
 
-		cdf = netCDF4.Dataset(f)
-		data = read_var(cdf,variable_name)[min_y:max_y,min_x:max_x]
-		l2p_flags = read_var(cdf,l2p_name)[min_y:max_y,min_x:max_x]
+		data = read_var(f,variable_name)[crop]
+		l2p_flags = read_var(f,l2p_name)[crop]
 		l2p_flags = np.bitwise_and(l2p_flags,-16384).astype(bool)
-		cdf.close()
 
 
 		save_loc = '/'.join([save_folder ,original_folder , f_name])
