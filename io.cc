@@ -270,7 +270,7 @@ open_LUT(const string pathsfile, Mat1b &lut, int *dims)
 }
 
 void
-read_mask(const string pathsfile, Mat1b &mask, int cur_ind)
+read_mask(const string pathsfile, Mat1w &mask, int cur_ind)
 {
 	int ncid, y,x;
 	int n = nc_open(pathsfile.c_str(), 0, &ncid);
@@ -412,7 +412,7 @@ get_l2pmask(const char *pathsfile, Mat1b &land_mask, Mat1b &l2p_mask)
 }
 
 void
-read_acspo(const string pathsfile, Mat1b &mask, int cur_ind)
+read_acspo(const string pathsfile, Mat1w &mask, int cur_ind)
 {
 	int ncid, y,x;
 	int n = nc_open(pathsfile.c_str(), 0, &ncid);
@@ -1347,13 +1347,13 @@ save_and_update(const string filename, const Mat &samples,string variable, bool 
 				ncfatal(n, "nc_put_var_float failed");
 		}
 
-		else if(samples.type() == CV_8UC1){
-		    n = nc_def_var(ncid, variable.c_str(), NC_UBYTE, dimid.size(), dimid.data(), &varid);
+		else if(samples.type() == CV_16UC1){
+		    n = nc_def_var(ncid, variable.c_str(), NC_USHORT, dimid.size(), dimid.data(), &varid);
 			if(n != NC_NOERR){
 				ncfatal(n, "nc_def_var failed");
 			}
 
-			n = nc_put_var_uchar(ncid, varid, (uchar*)samples.data);
+			n = nc_put_var_ushort(ncid, varid, (ushort*)samples.data);
 			if(n != NC_NOERR)
 				ncfatal(n, "nc_put_var_float failed");
 		}
@@ -1400,8 +1400,8 @@ save_mat(vector<string> paths, Mat &samples, string variable,bool create, int he
 		save_slice.create(height,width,CV_32FC1);
 	}
 
-	else if(samples.type() == CV_8UC1){
-		save_slice.create(height,width,CV_8UC1);
+	else if(samples.type() == CV_16UC1){
+		save_slice.create(height,width,CV_16UC1);
 	}
 	else{
 		eprintf("WRONG TYPE\n");
@@ -1418,11 +1418,11 @@ save_mat(vector<string> paths, Mat &samples, string variable,bool create, int he
 	        }
 		}
 
-		else if(samples.type() == CV_8UC1){
+		else if(samples.type() == CV_16UC1){
 		    // place slice from 3d matrix into 2d matrix in order to save
 	        for(y=0;y<height;y++){
 	            for(x=0;x<width;x++){
-	                save_slice.at<uchar>(y,x) = samples.at<uchar>(y,x,i);
+	                save_slice.at<ushort>(y,x) = samples.at<ushort>(y,x,i);
 	            }
 	        }
 		}

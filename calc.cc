@@ -251,12 +251,12 @@ get_landborders(const Mat1b &land_mask, Mat1b &border_mask,int kernel_size)
 
 void
 compute_eigenvals(const Mat1f &bt08,const Mat1f &bt10,const Mat1f &bt11,const Mat1f &bt12,
-                  const Mat1b border_mask, Mat1b &clear_mask,int cur_ind)
+                  const Mat1b border_mask, Mat1w &clear_mask,int cur_ind)
 {
   int y,x,i,j,k;
   int y_delta = 1;
   int x_delta = 1;
-  int t_delta = 0;
+  int t_delta = 1;
 
   int min_num = (2*y_delta +1) *(2*x_delta + 1)*(2*t_delta+1)/2;
   int count_dim = 0;
@@ -658,7 +658,8 @@ compute_above_samples(const Mat1f &a, const Mat1f &b, Mat1f &above, const Mat1b 
         for(y = 0; y < HEIGHT; ++y){
             for(x = 0; x < WIDTH; ++x){
                 if(l2p_mask(y,x) == 0){
-                  if(a(y,x,i) > b(y,x,i) - DELTA_SST && std::isfinite(a(y,x,i)) && std::isfinite(b(y,x,i))){
+                  //if(a(y,x,i) > b(y,x,i) - DELTA_SST/2 && std::isfinite(a(y,x,i)) && std::isfinite(b(y,x,i))){
+                  if(a(y,x,i) > b(y,x,i) && std::isfinite(a(y,x,i)) && std::isfinite(b(y,x,i))){
                       above(y,x,i) = a(y,x,i);
                   }
                   else if( std::isfinite(b(y,x,i))){
@@ -737,12 +738,12 @@ set_gamma_var(MatrixXf &Gamma, const vector<float> sw)
 }
 
 void
-compute_gaussian_weights(vector<float> &weights)
+compute_gaussian_weights(vector<float> &weights, float sigma=SIGMA_H)
 {
   int i;
   int size = 2*COLLATED_LAG + 1;
   float w;
-  float denominator = 2*pow(SIGMA_H, 2);
+  float denominator = 2*pow(sigma, 2);
   for(i = 0; i < size; ++i){
     w = exp(-pow((-1 + i/(float) COLLATED_LAG),2)/denominator);
     weights.push_back(w);
@@ -843,35 +844,6 @@ compute_dt_thresholds(Mat1f &t_cold, Mat1f &t_warm, const Mat1f &sza)
     }
 }
 
-void
-compute_reinstated(Mat1f &reinstated_clear, Mat1f &original_sst, const Mat1f &smooth, Mat1b mask,
-                   Mat1f &t_cold, Mat1f &t_warm, int collated_interp_size, const Mat1f &reference_sst)
-{
-  int i, y, x;
-  float DD, D_ref, D_right, D_left;
-  bool nn,diag;
- 
-
-  for(i = 1; i < collated_interp_size-1; ++i){        
-        for(y = 0; y < HEIGHT; ++y){
-            for(x = 0; x < WIDTH; ++x){
-                if(i > 0 && i < collated_interp_size -1){
-                    DD = original_sst(y,x,i) - smooth(y,x,i);
-                    D_ref = original_sst(y,x,i) - reference_sst(y,x); 
-                    nn = !(mask(y,x,i) & NN);
-                    diag = !(mask(y,x,i) & DIAG);
-                    if((std::isfinite(DD) && DD > -DELTA_SST) && D_ref > t_cold(y,x) && D_ref < t_warm(y,x) && original_sst(y,x,i) > MIN_TEMP && nn && diag){
-                        reinstated_clear(y,x,i) = original_sst(y,x,i);
-                    }
-                }
-            }
-        }
-    }
-
-    t_cold.release();
-    t_warm.release();
-    original_sst.release();
-}
 
 void
 compute_reference(const string path, Mat1f &reference_sst)
@@ -883,4 +855,137 @@ compute_reference(const string path, Mat1f &reference_sst)
   get_var(path, dt_analysis, "dt_analysis");
 
   reference_sst = sst - dt_analysis;
+}
+
+void
+nanblur(const Mat &src, Mat &dst, int ksize)
+{
+  Mat kernel = Mat::ones(ksize, 1, CV_64FC1)/ksize;
+  sepFilter2D(src, dst, -1, kernel, kernel);
+}
+
+void
+stdfilter(const Mat &src, Mat &dst, int ksize)
+{
+  Mat b, bs, _tmp;
+  
+  nanblur(src.mul(src), bs, ksize);
+  nanblur(src, b, ksize);
+
+  // avoid sqrt of nagative number
+  _tmp = bs - b.mul(b);
+  CHECKMAT(_tmp, CV_32FC1);
+  auto tmp = _tmp.ptr<float>(0);
+  for(size_t i = 0; i < _tmp.total(); i++){
+    if(tmp[i] < 0){
+      tmp[i] = 0;
+    }
+  }
+  sqrt(_tmp, dst);
+}
+
+void
+remove_local_min(Mat1f &clear_samples,const Mat1b &l2p_mask, int collated_interp_size)
+{
+  int y,x,t;
+  int dl, l;
+  float dt = 0.02;
+  int N_points = 10;
+  float numerator, denominator;
+  Mat1b ind_nan(1,collated_interp_size);
+
+  vector<short> inds, inds_erase;
+  vector<float> dfs;
+
+  for(y = 0; y < HEIGHT; ++y){
+    for(x = 0; x < WIDTH; ++x){
+      if(l2p_mask(y,x) == 0){
+        //count number of finite in time series
+        ind_nan.setTo(0);
+        inds.clear();
+        for(t = 0; t < collated_interp_size; ++t){
+          if(std::isfinite(clear_samples(y,x,t))){
+            inds.push_back(t);
+            ind_nan(t) = 1;
+          }
+        }
+
+        l = inds.size();
+        dl = 1;
+      
+        while(l >= N_points && dl>0){
+
+          for(t = 0; t < l-1; ++t){
+            numerator = (clear_samples(y,x,inds[t+1]) - clear_samples(y,x,inds[t]));
+            denominator = (inds[t+1] - inds[t]);
+            dfs.push_back(  numerator / denominator );
+            //printf("dfs = %f ",dfs[t]);
+          }
+  
+
+          for( t = 1; t < l - 2; ++t){
+            if(dfs[t-1] < -dt && dfs[t] > dt){
+              clear_samples(y,x,inds[t]) = NAN;
+              
+              inds_erase.push_back(inds[t]);
+            }
+          }
+          dfs.clear();
+          inds.clear();
+          // this needs to be done better
+          for(t = 0; t < inds_erase.size(); ++t){
+            ind_nan(inds_erase[t]) = 0;
+          }
+          for(t = 0; t < collated_interp_size; ++t){
+            if(ind_nan(t)){
+              inds.push_back(t);
+            }
+          }
+          inds_erase.clear();
+
+          dl = l - inds.size();
+          l = inds.size();
+         
+        }
+        
+
+      }
+    }
+  }
+}
+
+void
+compute_reinstated(Mat1f &reinstated_clear, Mat1f &original_sst, const Mat1f &smooth, Mat1w mask,
+                   Mat1f &t_cold, Mat1f &t_warm, int collated_interp_size, const Mat1f &reference_sst)
+{
+  int i, y, x;
+  float DD, D_ref, D_right, D_left;
+  bool nn,diag, finite, above, envelope;
+ 
+  
+  
+  for(i = 1; i < collated_interp_size-1; ++i){        
+        for(y = 0; y < HEIGHT; ++y){
+            for(x = 0; x < WIDTH; ++x){
+              
+                if(i > 0 && i < collated_interp_size -1){
+                    DD = original_sst(y,x,i) - smooth(y,x,i);
+                    D_ref = original_sst(y,x,i) - reference_sst(y,x); 
+                    nn = !(mask(y,x,i) & NN)  ;
+                    diag = !(mask(y,x,i) & DIAG);
+                    finite = std::isfinite(DD);
+                    above = finite && DD > -DELTA_SST && nn && diag;
+                    envelope = finite && DD > -DELTA_SST && DD < 2*DELTA_SST;
+                    if( (above || envelope) && D_ref > t_cold(y,x) && D_ref < t_warm(y,x) && original_sst(y,x,i) > MIN_TEMP){
+                        reinstated_clear(y,x,i) = original_sst(y,x,i);
+                    }
+                }
+            
+            }
+        }
+    }
+
+    t_cold.release();
+    t_warm.release();
+    original_sst.release();
 }

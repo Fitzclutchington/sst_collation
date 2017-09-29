@@ -305,7 +305,7 @@ histogram_2d(const vector<string> &mask_files,const vector<string> &sst, string 
 	int dims[3] = {HEIGHT,WIDTH,time_size};
 	//int ORIGINAL_LAG = FILTER_WINDOW_LAG+SECOND_PASS_LAG;
 
-	Mat1b clear_masks(HEIGHT,WIDTH);
+	Mat1w clear_masks(HEIGHT,WIDTH);
 	Mat1f clear_samples(3,dims);
 	Mat1f lons(HEIGHT,WIDTH);
 	Mat1f reference(HEIGHT,WIDTH);
@@ -367,7 +367,7 @@ histogram_3d(const vector<string> &mask_files,const vector<string> &sst, Mat1f &
 	int dims[3] = {HEIGHT,WIDTH,time_size};
 	//int ORIGINAL_LAG = FILTER_WINDOW_LAG+SECOND_PASS_LAG;
 
-	Mat1b clear_mask(HEIGHT,WIDTH);
+	Mat1w clear_mask(HEIGHT,WIDTH);
 	Mat1f clear_samples(3,dims);
 	Mat1f lons(HEIGHT,WIDTH);
 	
@@ -418,8 +418,8 @@ distribution_check_io(const vector<string> &pass2_files, const vector<string> &s
 	printf("time size = %d\n", time_size);
 	int dims[3] = {HEIGHT,WIDTH,time_size};
 	Mat1f clear_samples(3,dims);
-	Mat1b clear_mask(3,dims);
-	Mat1b clear_masks(HEIGHT,WIDTH);
+	Mat1w clear_mask(3,dims);
+	Mat1w clear_masks(HEIGHT,WIDTH);
 	//int ORIGINAL_LAG = FILTER_WINDOW_LAG+SECOND_PASS_LAG;
 	printf("initiated vars\n");
 

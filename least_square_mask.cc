@@ -19,28 +19,55 @@ least_square_mask_acspo(vector<string> &clear_paths,const vector<string> &origin
 	int time_size = original_paths.size();
 	int dims[3] = {HEIGHT, WIDTH, time_size};
 
-	string variable_name = "sea_surface_temperature";
+	string sst_variable_name = "sea_surface_temperature";
+	string bt08_variable_name = "brightness_temperature_08um6";
+	string bt10_variable_name = "brightness_temperature_10um4";
+	string bt11_variable_name = "brightness_temperature_11um2";
+	string bt12_variable_name = "brightness_temperature_12um3";
+
 	string filename, clearpath;
 	Mat1f sst_samples(3,dims);
 	Mat1f ls_approx(3,dims);
 	Mat1f sst_a(3,dims); // adjusted sst after first iteration of lsq
 
-	Mat1b clear_mask(3,dims);
+	Mat1f bt08(HEIGHT,WIDTH);
+	Mat1f bt10(HEIGHT,WIDTH);
+	Mat1f bt11(HEIGHT,WIDTH);
+	Mat1f bt12(HEIGHT,WIDTH);
+	Mat1f sst(HEIGHT, WIDTH);
+	Mat1f median_sst(HEIGHT,WIDTH);
+
+	Mat1w clear_mask(3,dims);
 
 	for(j = 0; j < time_size; ++j){
 
         read_acspo(original_paths[j],clear_mask,j);  // open acspo granule
-        readgranule_oneband(original_paths[j], sst_samples, j, variable_name);  // open original granule
-        apply_mask_slice(clear_mask,sst_samples,j,true); // apply mask
+        readgranule_oneband(original_paths[j], sst_samples, j, sst_variable_name);  // open original granule
+        //apply_mask_slice(clear_mask,sst_samples,j,true); // apply mask
         
+        get_var(original_paths[j], bt08, bt08_variable_name);
+        get_var(original_paths[j], bt10, bt10_variable_name);
+        get_var(original_paths[j], bt11, bt11_variable_name);
+        get_var(original_paths[j], bt12, bt12_variable_name);
+        get_var(original_paths[j], sst, sst_variable_name);
 
+
+        compute_bt3_ratio(bt08, bt11, bt12, clear_mask, j);
+        compute_bt2_ratio(bt08, bt10, clear_mask, j);
+        compute_bt12_mask(sst,bt12,clear_mask,j);
+        compute_bt12_mask(bt10,bt12,clear_mask,j);
+        medianBlur(sst, median_sst, 5);
+
+        compute_median_mask(sst, median_sst, clear_mask, j);
+        compute_std_mask(sst, median_sst, clear_mask, j);
+        
         filename = generate_filename(original_paths[j]);
         clearpath = "data/clear" + filename;
         clear_paths.push_back(clearpath.c_str()); // append save path to clear_paths
 
         printf("opened file: %s\n",clear_paths[j].c_str());
     }
-    
+    bt08.release();bt11.release();bt12.release();
 
     
     // compute nn and diag mask

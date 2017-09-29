@@ -23,7 +23,7 @@ using namespace Eigen;
 #include "collated_fit_no_padding.cc"
 #include "least_square_mask.cc"
 #include "least_square_collate.cc"
-#include "lsq_test.cc"
+
 
 #define NDEBUG
 
@@ -75,39 +75,36 @@ main(int argc, char *argv[])
     //for debugging purposes
     int i;
     
-    for(i =0;i<203;i++){
+    for(i =0;i<95;i++){
         filename = generate_filename(original_paths[i]);
         clearpath = "data/clear" + filename;
         clear_paths.push_back(clearpath.c_str());
     }
+    
     */
-    
-    
-    //least_square_test(clear_paths, original_paths, l2p_mask);
-    
     
     printf("starting cloud filter\n");          
     
+    // compute first rounds of masks
     least_square_mask_acspo(clear_paths,original_paths, l2p_mask);
     
-    
+    // compute eigen mask on remaining pixels
     filter_clouds(original_paths, l2p_mask, border_mask, clear_paths);
     
     
+
     int dims[3] = { HEIGHT_HIST, WIDTH_HIST, DEPTH_HIST};
     Mat1f histogram (3,dims);
     Mat1b hist_mask(3,dims);
     
     histogram_3d(clear_paths, original_paths, reference_sst, sza, 0, histogram);
     
-    //open_hist_3d("histogram.nc", histogram);
-    SAVENC(histogram);
     mask_histogram(histogram, hist_mask, false);
     
     
     //Mat1b hist_mask(1,1);
+    // perform collation algorithm
     least_squares_collate(clear_paths, original_paths, l2p_mask, hist_mask, reference_sst, sza, border_mask, hourly_paths);
-    //histogram_3d(hourly_paths,hourly_paths, reference_file, 2, histogram);
-    //SAVENC(histogram);
+
     
 }

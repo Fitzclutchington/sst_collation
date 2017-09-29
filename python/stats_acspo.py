@@ -17,20 +17,27 @@ if len(sys.argv) < 2:
     print "time as yyyy-mm-dd"
     sys.exit()
 
+collated2_hour_path = '../data/collated2_hour/'
+collated_hour_path = '../data/collated_hour/'
+
 clear_files = sorted(glob.glob("../data/clear/*.nc"))
 approx_files = sorted(glob.glob("../data/approx_ls/*.nc"))
 collated2_files = sorted(glob.glob("../data/collated_mat2_ls/*.nc"))
 scollate_files = sorted(glob.glob("../data/scollated_ls/*.nc"))
 r_collate_files = sorted(glob.glob("../data/above_ls/*.nc"))
 reinstated_files = sorted(glob.glob("../data/reinstated_ls/*.nc"))
+collated_hour_files = sorted(glob.glob("../data/collated_hour/*.nc"))
+collated2_hour_files = sorted(glob.glob("../data/collated2_hour/*.nc"))
+
 #acspo_files = sorted(glob.glob("../../acspo_test/data/collated_acspo/*.nc"))
 original_files = [line.rstrip('\n') for line in open('../goes-16-2017-08-31-granule-list.txt')]
 orig_filenames = [x.split('/')[-1] for x in original_files]
 approx_filenames = [x.split('/')[-1] for x in approx_files]
 clear_filenames = [x.split('/')[-1] for x in clear_files]
-
+collated_filenames = [x.split('/')[-1] for x in collated_hour_files]
 
 collated2_std = []
+collated_std = []
 scollated_std = []
 acspo_std = []
 pass1_std = []
@@ -39,6 +46,7 @@ reinstated_std = []
 col_acspo_std = []
 
 collated2_mean = []
+collated_mean = []
 scollated_mean = []
 acspo_mean = []
 pass1_mean = []
@@ -49,6 +57,7 @@ col_acspo_mean = []
 acspo_clear = []
 approx_clear = []
 collated2_clear = []
+collated_clear = []
 scollated_clear = []
 pass1_clear = []
 reinstated_clear = []
@@ -145,16 +154,29 @@ for i in range(total_files):
     pass1_clear.append(np.isfinite(sst_clear).sum())
    
 
+    if base_file in collated_filenames:
+        
+        cdf = netCDF4.Dataset(collated_hour_path+base_file)
+        col = read_var(cdf,"sea_surface_temperature")
+        col[~mask] = np.nan
+        
+        diff = col - ref_sst
+        collated_std.append(np.nanstd(diff))
+        collated_mean.append(np.nanmean(diff))
+        collated_clear.append(np.isfinite(col).sum())
+        cdf.close()
 
-    cdf = netCDF4.Dataset(collated2_files[i])
-    col = read_var(cdf,"sea_surface_temperature")
-    col[~mask] = np.nan
-    
-    diff = col - ref_sst
-    collated2_std.append(np.nanstd(diff))
-    collated2_mean.append(np.nanmean(diff))
-    collated2_clear.append(np.isfinite(col).sum())
-    cdf.close()
+        cdf = netCDF4.Dataset(collated2_hour_path+base_file)
+        col = read_var(cdf,"sea_surface_temperature")
+        col[~mask] = np.nan
+        
+        diff = col - ref_sst
+        collated2_std.append(np.nanstd(diff))
+        collated2_mean.append(np.nanmean(diff))
+        collated2_clear.append(np.isfinite(col).sum())
+        cdf.close()
+
+
 
     cdf = netCDF4.Dataset(scollate_files[i])
     col = read_var(cdf,"sea_surface_temperature")
@@ -180,9 +202,12 @@ outfile = '../data/' +time_file + "/num_obs"
 sio.savemat(-outfile,{ "sst":acspo,"pass2":clear_pass2,"collated1":clear_col,"collated2":clear_col2,"scollated":clear_scol,"reinstated":clear_reinstated,"approx1":clear_approx,"approx2":clear_approx2, "time_stamps":time_stamps})
 """
 
+
 plt.figure()
 plt.grid()
-plt.plot(collated2_std, c='r', lw=3, label="collated2")
+
+plt.plot(hour_ind,collated_std, c='m', lw=3, label="collated")
+plt.plot(hour_ind,collated_std, c='r', lw=3, label="above")
 plt.plot(scollated_std, c='m', label="scollated")
 plt.plot(acspo_std, c='k', lw=2,label="acspo")
 plt.plot(pass1_std, c='c',label="pass1")
@@ -199,7 +224,9 @@ plt.show()
 
 plt.figure()
 plt.grid()
-plt.plot(collated2_mean, c='r', lw=3, label="collated2")
+
+plt.plot(hour_ind,collated_mean, c='m', lw=3, label="collated")
+plt.plot(hour_ind,collated2_mean, c='r', lw=3, label="above")
 plt.plot(scollated_mean, c='m', label="scollated")
 plt.plot(acspo_mean, c='k', lw=2,label="acspo")
 plt.plot(pass1_mean, c='c',label="pass1")
@@ -215,7 +242,9 @@ plt.show()
 
 plt.figure()
 plt.grid()
-plt.plot(collated2_clear, c='r', lw=3, label="collated2")
+
+plt.plot(hour_ind,collated_clear, c='m', lw=3, label="collated")
+plt.plot(hour_ind,collated2_clear, c='r', lw=3, label="above")
 plt.plot(scollated_clear, c='m', label="scollated")
 plt.plot(acspo_clear, c='k', lw=2,label="acspo")
 plt.plot(pass1_clear, c='c',label="pass1")

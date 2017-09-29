@@ -8,3 +8,4 @@ bt_collation/
 test_eigen/
 *.png
 python/images/*
+data/

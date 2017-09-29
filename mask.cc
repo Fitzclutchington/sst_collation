@@ -1,5 +1,5 @@
 void
-apply_l2p_flags(const Mat1b &l2p_mask,Mat1f &bt11_clear, int ind, bool slice)
+apply_l2p_flags(const Mat1w &l2p_mask,Mat1f &bt11_clear, int ind, bool slice)
 {
     int x,y;
     if(slice){
@@ -30,7 +30,7 @@ Cloud mask determined by the difference of neighboring pixels diagonal
 
 */
 void 
-compute_diagmask(const Mat1f &samples, Mat1b &clear_samples, int cur_ind)
+compute_diagmask(const Mat1f &samples, Mat1w &clear_samples, int cur_ind)
 {
     int x,y,i, ind;
     int w = DIAG_LAG;
@@ -75,7 +75,7 @@ Cloud mask determined by the difference of neighboring pixels
 
 */
 void 
-compute_nnmask(const Mat1f &samples, Mat1b &clear_samples, int cur_ind)
+compute_nnmask(const Mat1f &samples, Mat1w &clear_samples, int cur_ind)
 {
     int x, y, ind_right, ind_left;
     float D_right, D_left;  
@@ -94,8 +94,88 @@ compute_nnmask(const Mat1f &samples, Mat1b &clear_samples, int cur_ind)
     }
 }
 
+void 
+compute_bt3_ratio(const Mat1f &bt08, const Mat1f &bt11, const Mat1f &bt12, Mat1w &clear_mask, int cur_ind)
+{
+    int y,x;
+    Mat1f bt_ratio(HEIGHT,WIDTH);
+    bt_ratio = bt08 + 0.8*bt11 - 1.8*bt12;
+  
+    for(y = 0; y < HEIGHT; ++y){
+        for(x = 0; x < WIDTH; ++x){
+            if(!(clear_mask(y, x, cur_ind) & L2P) && bt_ratio(y,x) < T_BT3_RATIO){
+                clear_mask(y,x,cur_ind) = clear_mask(y,x,cur_ind) | BT3_RATIO;
+            }
+        }
+    }
+}
+
 void
-mask_l2p(Mat1b &bt_mask,const Mat1b &l2p_mask, int cur_ind)
+compute_bt2_ratio(const Mat1f &bt08, const Mat1f &bt10, Mat1w &clear_mask, int cur_ind)
+{
+    int y,x;
+    Mat1f bt_ratio(HEIGHT,WIDTH);
+    bt_ratio = 100* (bt10 - bt08)/(bt10 +bt08);
+  
+    for(y = 0; y < HEIGHT; ++y){
+        for(x = 0; x < WIDTH; ++x){
+            if(!(clear_mask(y, x, cur_ind) & L2P) && (bt_ratio(y,x) < T_BT2_RATIO)){
+                clear_mask(y,x,cur_ind) = clear_mask(y,x,cur_ind) | BT2_RATIO;
+            }
+        }
+    }
+}
+
+void
+compute_bt12_mask(const Mat1f &sst, const Mat1f &bt12, Mat1w &clear_mask, int cur_ind)
+{
+    int y,x;
+  
+    for(y = 0; y < HEIGHT; ++y){
+        for(x = 0; x < WIDTH; ++x){
+            if(!(clear_mask(y, x, cur_ind) & L2P) && (bt12(y,x) > sst(y,x))){
+                clear_mask(y,x,cur_ind) = clear_mask(y,x,cur_ind) | BT12_TEST;
+            }
+        }
+    } 
+}
+
+void
+compute_median_mask(const Mat1f &sst, const Mat1f &median_sst, Mat1w &clear_mask, int cur_ind)
+{
+    int y,x;
+    Mat1f median_diff = abs(median_sst - sst);
+
+    for(y = 0; y < HEIGHT; ++y){
+        for(x = 0; x < WIDTH; ++x){
+            if(!(clear_mask(y, x, cur_ind) & L2P) && (median_diff(y,x) > T_MEDIAN)){
+                clear_mask(y,x,cur_ind) = clear_mask(y,x,cur_ind) | MEDIAN_TEST;
+            }
+        }
+    } 
+}
+
+void compute_std_mask(const Mat1f &sst, const Mat1f &median_sst, Mat1w &clear_mask, int cur_ind)
+{
+    int y,x;
+    Mat1f std_median(HEIGHT,WIDTH);
+    Mat1f std_sst(HEIGHT,WIDTH);
+
+    stdfilter(median_sst, std_median, 7);
+    stdfilter(sst, std_sst, 7);
+    Mat1f std_diff = abs(std_median - std_sst);
+
+    for(y = 0; y < HEIGHT; ++y){
+        for(x = 0; x < WIDTH; ++x){
+            if(!(clear_mask(y, x, cur_ind) & L2P) && (std_diff(y,x) > T_STD)){
+                clear_mask(y,x,cur_ind) = clear_mask(y,x,cur_ind) | STD_TEST;
+            }
+        }
+    } 
+}
+
+void
+mask_l2p(Mat1w &bt_mask,const Mat1b &l2p_mask, int cur_ind)
 {
     int y,x;
     for(y = 0; y < HEIGHT; ++y){
@@ -108,7 +188,7 @@ mask_l2p(Mat1b &bt_mask,const Mat1b &l2p_mask, int cur_ind)
 }
 
 void
-apply_mask_slice(const Mat1b &mask, Mat1f &samples, int cur_ind, bool dim)
+apply_mask_slice(const Mat1w &mask, Mat1f &samples, int cur_ind, bool dim)
 {
     // if dim is true mask is a 3d array
     // if dim is false mask is a 2d array
@@ -135,7 +215,7 @@ apply_mask_slice(const Mat1b &mask, Mat1f &samples, int cur_ind, bool dim)
 }
 
 void
-generate_mask_3d(const Mat1f &clear_samples, Mat1b &clear_mask, int time_size)
+generate_mask_3d(const Mat1f &clear_samples, Mat1w &clear_mask, int time_size)
 {
     int y,x,t;
     clear_mask.setTo(0);

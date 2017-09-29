@@ -22,7 +22,7 @@ filter_clouds(const vector<string> &paths, const Mat1b &l2p_mask, const Mat1b &b
     Mat1f bt12;
     Mat1f bt08;
     Mat1f bt10;
-    Mat1b bt_mask(3,dims);
+    Mat1w bt_mask(3,dims);
     //Mat1f sst(3,dims);
     
 

@@ -1,5 +1,5 @@
 void
-smooth_samples_collated(const Mat1f &collated_interp, Mat1f &collated_smooth,const Mat1f &l2p_mask,
+smooth_samples(const Mat1f &collated_interp, Mat1f &collated_smooth,const Mat1f &l2p_mask,
                         const Mat1f reference_sst,const int* window,const int sample_size)
 {
     int i,y,x,t,cur_ind;

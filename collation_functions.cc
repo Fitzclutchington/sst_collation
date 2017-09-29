@@ -204,7 +204,9 @@ set_rhs_v(const Mat1f &approx,const Mat1f &clear_samples, VectorXf &rhs, MatrixX
         if(clear_p > 1) clear_p = 1;
         sw[i] = (1-clear_p)*g;
         
-        if(clear_count < 3 && approx_count == 0){
+
+        //if(clear_count < 3 && approx_count ==0){
+        if(approx_count ==0){
             clear_w =0;
             clear_sum = 0;
             sw[i] = g;
