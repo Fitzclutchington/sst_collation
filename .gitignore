@@ -9,3 +9,4 @@ test_eigen/
 *.png
 python/images/*
 data/
+*.pyc
